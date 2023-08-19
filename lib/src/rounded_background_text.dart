@@ -288,6 +288,7 @@ class RoundedBackgroundText extends StatelessWidget {
           text: painter,
           innerRadius: innerRadius,
           outerRadius: outerRadius,
+          screenSize: MediaQuery.of(context).size.width,
         ),
       );
     });
@@ -300,12 +301,14 @@ class RoundedBackgroundTextPainter extends CustomPainter {
 
   final double innerRadius;
   final double outerRadius;
+  final double screenSize;
 
   const RoundedBackgroundTextPainter({
     required this.backgroundColor,
     required this.text,
     required this.innerRadius,
     required this.outerRadius,
+    required this.screenSize,
   });
 
   @visibleForTesting
@@ -387,6 +390,7 @@ class RoundedBackgroundTextPainter extends CustomPainter {
     for (final info in lineInfo) {
       final next = lineInfo.elementAtOrNull(lineInfo.indexOf(info) + 1);
 
+
       final outerRadius = info.outerRadius(this.outerRadius);
       final innerRadius = info.innerRadius(this.innerRadius);
 
@@ -413,8 +417,15 @@ class RoundedBackgroundTextPainter extends CustomPainter {
       }
 
       void drawInnerCorner(LineMetricsHelper info, [bool toLeft = true]) {
-        //Set innerFactor to zero if there is no room to draw an arc (14px).
-        final localInnerRadius = ((info.x - next!.x).abs() < 14) ? 0 : innerRadius;
+        // Set localInnerRadius to zero if there is no room to draw an arc (15px).
+        final isRoom = ((info.x - next!.x).abs() > 15
+                          && info.y != next!.y);
+        // Temporary fix, force localInnerRadius to 6 coz otherwise arc
+        // would break under a few occasions
+        double localInnerRadius = 6;
+        if (!isRoom)
+          localInnerRadius = 0;
+
         if (toLeft) {
           final formattedHeight =
               info.fullHeight - info._innerLinePadding.bottom;
@@ -425,7 +436,7 @@ class RoundedBackgroundTextPainter extends CustomPainter {
           path.quadraticBezierTo(
               iControlPoint.dx, iControlPoint.dy, iEndPoint.dx, iEndPoint.dy);
         } else {
-          final formattedY = next.y + info._innerLinePadding.bottom;
+          final formattedY = next!.y + info._innerLinePadding.bottom;
           path.lineTo(next.x - localInnerRadius, formattedY);
           final iControlPoint = Offset(next.x, formattedY);
           final iEndPoint = Offset(next.x, formattedY + localInnerRadius);
@@ -481,16 +492,16 @@ class RoundedBackgroundTextPainter extends CustomPainter {
         }
       }
 
-      LineMetricsHelper? nextLineElement() {
+      LineMetricsHelper? nextLineElement(int jump) {
         try {
-          return reversedInfo.elementAt(currentIndex + 2);
+          return reversedInfo.elementAt(currentIndex + jump);
         } catch (e) {
           return null;
         }
       }
 
       final next = nextElement();
-      final nextLine = nextLineElement() ?? nextElement();
+      LineMetricsHelper? nextLine = nextLineElement(2) ?? nextElement();
 
 
       final outerRadius = info.outerRadius(this.outerRadius);
@@ -521,10 +532,15 @@ class RoundedBackgroundTextPainter extends CustomPainter {
 
       void drawInnerCorner(LineMetricsHelper info, [bool toRight = true]) {
         // To left
-        //Set innerFactor to zero if there is no room to draw an arc (15px).
-        final _next = (info.fullWidth != next?.fullWidth) ? next : nextLine; //nextLine;
-        final localInnerRadius = ((info.fullWidth - _next!.fullWidth).abs() < 15)
-            ? 0 : innerRadius;
+        // Set innerRadius to zero if there is no room to draw an arc (15px).
+        LineMetricsHelper? _next = (info.fullWidth != next?.fullWidth) ? next : nextLine;
+        final isRoom = ((info.fullWidth - _next!.fullWidth).abs() > 15
+                          && info.y != _next!.y);
+        // Temporary fix, force localInnerRadius to 6 coz otherwise arc
+        // would break under a few occasions
+        double localInnerRadius = 6;
+        if(!isRoom)
+          localInnerRadius = 0;
         if (!toRight) {
           final formattedHeight =
               info.fullHeight - info._innerLinePadding.bottom;
@@ -601,31 +617,27 @@ class RoundedBackgroundTextPainter extends CustomPainter {
   // the width of the current element and the next one. This is responsible
   // to not let the next element go too little away from the current one
   void normalize(LineMetricsHelper? next, LineMetricsHelper info) {
-    // There is no need to normalize the last element, since it'll have already
-    // been normalized
     if (next != null) {
-      final outerRadius = info.outerRadius(this.outerRadius);
       var difference = () {
-        final width = (info.rawWidth - next.rawWidth);
+        final width = (info.width - next.width);
         return width.roundToDouble();
       }();
-
       // If the difference is negative, it means that the next element is a little
       // bigger than the current one. The current one takes the dimensions of
       // the next one
       if (difference.isNegative) {
         difference = -difference;
-      }
-      final differenceBigger = difference > outerRadius;
-      if (!differenceBigger) {
-        info._overridenX = next.x;
-        info._overridenWidth = next.fullWidth;
+        final differenceBigger = difference > outerRadius * 2;
+        if (!differenceBigger) {
+          info._overridenX = next.x;
+          info._overridenWidth = next.fullWidth;
+        }
       }
       // If the difference is positive, it means that the current element is a
       // little bigger than the next one. The next one takes the dimensions of
       // the current one
       else {
-        final differenceBigger = difference > outerRadius;
+        final differenceBigger = difference > outerRadius * 2;
         if (!differenceBigger) {
           next._overridenX = info.x;
           next._overridenWidth = info.fullWidth;
