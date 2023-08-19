@@ -420,11 +420,11 @@ class RoundedBackgroundTextPainter extends CustomPainter {
         // Set localInnerRadius to zero if there is no room to draw an arc (15px).
         final isRoom = ((info.x - next!.x).abs() > 15
                           && info.y != next!.y);
-        // Temporary fix, force localInnerRadius to 6 coz otherwise arc
+        // Temporary fix, force localInnerRadius to 5 coz otherwise arc
         // would break under a few occasions
-        double localInnerRadius = 6;
+        double localInnerRadius = 5;
         if (!isRoom)
-          localInnerRadius = 0;
+          localInnerRadius = 4;
 
         if (toLeft) {
           final formattedHeight =
@@ -536,11 +536,11 @@ class RoundedBackgroundTextPainter extends CustomPainter {
         LineMetricsHelper? _next = (info.fullWidth != next?.fullWidth) ? next : nextLine;
         final isRoom = ((info.fullWidth - _next!.fullWidth).abs() > 15
                           && info.y != _next!.y);
-        // Temporary fix, force localInnerRadius to 6 coz otherwise arc
+        // Temporary fix, force localInnerRadius to 5 coz otherwise arc
         // would break under a few occasions
-        double localInnerRadius = 6;
+        double localInnerRadius = 5;
         if(!isRoom)
-          localInnerRadius = 0;
+          localInnerRadius = 4;
         if (!toRight) {
           final formattedHeight =
               info.fullHeight - info._innerLinePadding.bottom;
