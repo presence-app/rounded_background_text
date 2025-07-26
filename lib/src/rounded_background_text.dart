@@ -449,7 +449,7 @@ class RoundedBackgroundTextPainter extends CustomPainter {
             effectiveNext != null &&
             ((info.x - effectiveNext.x).abs() > 30 &&
                 info.y != effectiveNext.y);
-        // Note: Using outerRadius consistently due to unreliable rendering with different values
+        // Note: Using a fixed outerRadius value because varying it caused rendering issues
         double effectiveOuterRadius = isRoom ? outerRadius : outerRadius;
 
         path.lineTo(info.x, info.fullHeight - effectiveOuterRadius);
@@ -574,8 +574,9 @@ class RoundedBackgroundTextPainter extends CustomPainter {
                 effectiveNext != null &&
                 ((info.fullWidth - effectiveNext.fullWidth).abs() > 30
                     && info.y != effectiveNext.y);
-        // Note: Using outerRadius consistently due to unreliable rendering with different values
+        // Note: Using a fixed outerRadius value because varying it caused rendering issues
         double effectiveOuterRadius = isRoom ? outerRadius : outerRadius;
+
 
         path.lineTo(info.fullWidth - effectiveOuterRadius, info.fullHeight);
 
