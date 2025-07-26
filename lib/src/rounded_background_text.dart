@@ -326,9 +326,11 @@ class RoundedBackgroundTextPainter extends CustomPainter {
   static List<List<LineMetricsHelper>> computeLines(TextPainter painter) {
     final metrics = painter.computeLineMetrics();
 
-    final helpers = metrics.map((lineMetric) {
-      return LineMetricsHelper(lineMetric, metrics.length);
-    });
+    final helpers = metrics.asMap().entries.map((entry) {
+      final i = entry.key;
+      final lineMetric = entry.value;
+      return LineMetricsHelper(lineMetric, metrics.length, i);
+    }).toList();
 
     final List<List<LineMetricsHelper>> lineInfos = [[]];
 
@@ -343,6 +345,7 @@ class RoundedBackgroundTextPainter extends CustomPainter {
     return lineInfos;
   }
 
+
   @override
   void paint(Canvas canvas, Size size) {
     final lineInfos = computeLines(text);
@@ -352,6 +355,39 @@ class RoundedBackgroundTextPainter extends CustomPainter {
     }
 
     text.paint(canvas, Offset.zero);
+  }
+
+  /// Returns the next element after [current] in the *original* top-to-bottom list.
+  ///
+  /// This is a global helper that works with the normal reading order of text lines.
+  /// It’s typically used for left-hand side path construction and general layout logic.
+  ///
+  /// This does a forward lookup using indexOf, and is not tied to reverse traversal.
+  LineMetricsHelper? nextLineAfter(
+      List<LineMetricsHelper> lines,
+      LineMetricsHelper current,
+      ) {
+    final currentIndex = current.lineIndex;
+    for (final line in lines) {
+      if (line.lineIndex > currentIndex) {
+        return line;
+      }
+    }
+    return null;
+  }
+
+  // Returns the previous element before [current] in the *original* top-to-bottom list.
+  LineMetricsHelper? previousLineBefore(
+      List<LineMetricsHelper> lines,
+      LineMetricsHelper current,
+      ) {
+    final currentIndex = current.lineIndex;
+    for (final line in lines.reversed) {
+      if (line.lineIndex < currentIndex) {
+        return line;
+      }
+    }
+    return null;
   }
 
   void paintBackground(Canvas canvas, List<LineMetricsHelper> lineInfo) {
@@ -390,7 +426,6 @@ class RoundedBackgroundTextPainter extends CustomPainter {
     for (final info in lineInfo) {
       final next = lineInfo.elementAtOrNull(lineInfo.indexOf(info) + 1);
 
-
       final outerRadius = info.outerRadius(this.outerRadius);
       final innerRadius = info.innerRadius(this.innerRadius);
 
@@ -407,39 +442,51 @@ class RoundedBackgroundTextPainter extends CustomPainter {
       }
 
       void drawBottomLeftCorner(LineMetricsHelper info) {
-        path.lineTo(info.x, info.fullHeight - outerRadius);
+        // Next element computed in forward order (top → bottom) to get the next line in [lineInfo].
+        final effectiveNext = nextLineAfter(lineInfo, info);
+        // Determine whether there is room to draw the arc.
+        final isRoom = info == lastInfo ||
+            effectiveNext != null &&
+            ((info.x - effectiveNext.x).abs() > 30 &&
+                info.y != effectiveNext.y);
+        // Note: Using outerRadius consistently due to unreliable rendering with different values
+        double effectiveOuterRadius = isRoom ? outerRadius : outerRadius;
+
+        path.lineTo(info.x, info.fullHeight - effectiveOuterRadius);
 
         final iControlPoint = Offset(info.x, info.fullHeight);
-        final iEndPoint = Offset(info.x + outerRadius, info.fullHeight);
+        final iEndPoint = Offset(info.x + effectiveOuterRadius, info.fullHeight);
 
         path.quadraticBezierTo(
             iControlPoint.dx, iControlPoint.dy, iEndPoint.dx, iEndPoint.dy);
       }
 
       void drawInnerCorner(LineMetricsHelper info, [bool toLeft = true]) {
-        // Set localInnerRadius to zero if there is no room to draw an arc (15px).
-        final isRoom = ((info.x - next!.x).abs() > 15
-            && info.y != next!.y);
-        // Temporary fix, force localInnerRadius to 5 coz otherwise arc
-        // would break under a few occasions
-        double localInnerRadius = 5;
-        if (!isRoom)
-          localInnerRadius = 4;
+        // Set localInnerRadius to 3 if there is no room to draw an arc (30px).
+        // Next element computed in forward order (top → bottom) to get the next line in [lineInfo].
+        final effectiveNext = nextLineAfter(lineInfo, info);
+        final isRoom = effectiveNext != null &&
+            ((info.x - effectiveNext.x).abs() > 30 &&
+                info.y != effectiveNext.y);
+        // Temporary fix, force effectiveInnerRadius to 5 coz otherwise arc
+        // would break when there is not room to draw arc. Also ensures consistent
+        // inner radius for both left and right sides.
+        double effectiveInnerRadius = isRoom ? 5 : 3;
 
         if (toLeft) {
           final formattedHeight =
               info.fullHeight - info._innerLinePadding.bottom;
-          path.lineTo(info.x, info.fullHeight - localInnerRadius);
+          path.lineTo(info.x, info.fullHeight - effectiveInnerRadius);
           final iControlPoint = Offset(info.x, formattedHeight);
-          final iEndPoint = Offset(info.x - localInnerRadius, formattedHeight);
+          final iEndPoint = Offset(info.x - effectiveInnerRadius, formattedHeight);
 
           path.quadraticBezierTo(
               iControlPoint.dx, iControlPoint.dy, iEndPoint.dx, iEndPoint.dy);
-        } else {
-          final formattedY = next!.y + info._innerLinePadding.bottom;
-          path.lineTo(next.x - localInnerRadius, formattedY);
-          final iControlPoint = Offset(next.x, formattedY);
-          final iEndPoint = Offset(next.x, formattedY + localInnerRadius);
+        } else if (effectiveNext != null) {
+          final formattedY = effectiveNext.y + info._innerLinePadding.bottom;
+          path.lineTo(effectiveNext.x - effectiveInnerRadius, formattedY);
+          final iControlPoint = Offset(effectiveNext.x, formattedY);
+          final iEndPoint = Offset(effectiveNext.x, formattedY + effectiveInnerRadius);
 
           path.quadraticBezierTo(
               iControlPoint.dx, iControlPoint.dy, iEndPoint.dx, iEndPoint.dy);
@@ -455,7 +502,6 @@ class RoundedBackgroundTextPainter extends CustomPainter {
         if (info.x > next.x) {
           // If the current one is less than the next, draw the inner corner
           drawInnerCorner(info);
-          // drawBottomLeftCorner(info);
         } else
           // If the next one is more to the right, draw the bottom left
         if (info.x < next.x) {
@@ -484,6 +530,14 @@ class RoundedBackgroundTextPainter extends CustomPainter {
     // !Goes horizontal and up
     for (final info in reversedInfo) {
       currentIndex++;
+
+      /// Returns the next element in the reversed list.
+      ///
+      /// This is used while building the right-hand side of the background path
+      /// (bottom-to-top traversal). Since we're iterating `reversedInfo`, the
+      /// "next" visual line is actually the previous element in the original list.
+      ///
+      /// Only safe to use inside this reversed loop.
       LineMetricsHelper? nextElement() {
         try {
           return reversedInfo.elementAt(currentIndex + 1);
@@ -492,19 +546,10 @@ class RoundedBackgroundTextPainter extends CustomPainter {
         }
       }
 
-      LineMetricsHelper? nextLineElement(int jump) {
-        try {
-          return reversedInfo.elementAt(currentIndex + jump);
-        } catch (e) {
-          return null;
-        }
-      }
-
       final next = nextElement();
-      LineMetricsHelper? nextLine = nextLineElement(2) ?? nextElement();
-
 
       final outerRadius = info.outerRadius(this.outerRadius);
+      // Currently unused since we apply a fixed effectiveInnerRadius instead.
       final innerRadius = info.innerRadius(this.innerRadius);
 
       void drawTopRightCorner(
@@ -521,10 +566,21 @@ class RoundedBackgroundTextPainter extends CustomPainter {
       }
 
       void drawBottomRightCorner(LineMetricsHelper info) {
-        path.lineTo(info.fullWidth - outerRadius, info.fullHeight);
+        // Next element computed in forward order (top → bottom) to get the next line in [lineInfo].
+        final effectiveNext = nextLineAfter(lineInfo, info);
+        // Determine whether there is room to draw the arc.
+        final isRoom =
+            info == lastInfo ||
+                effectiveNext != null &&
+                ((info.fullWidth - effectiveNext.fullWidth).abs() > 30
+                    && info.y != effectiveNext.y);
+        // Note: Using outerRadius consistently due to unreliable rendering with different values
+        double effectiveOuterRadius = isRoom ? outerRadius : outerRadius;
+
+        path.lineTo(info.fullWidth - effectiveOuterRadius, info.fullHeight);
 
         final iControlPoint = Offset(info.fullWidth, info.fullHeight);
-        final iEndPoint = Offset(info.fullWidth, info.fullHeight - outerRadius);
+        final iEndPoint = Offset(info.fullWidth, info.fullHeight - effectiveOuterRadius);
 
         path.quadraticBezierTo(
             iControlPoint.dx, iControlPoint.dy, iEndPoint.dx, iEndPoint.dy);
@@ -532,32 +588,35 @@ class RoundedBackgroundTextPainter extends CustomPainter {
 
       void drawInnerCorner(LineMetricsHelper info, [bool toRight = true]) {
         // To left
-        // Set innerRadius to zero if there is no room to draw an arc (15px).
-        LineMetricsHelper? _next = (info.fullWidth != next?.fullWidth) ? next : nextLine;
-        final isRoom = ((info.fullWidth - _next!.fullWidth).abs() > 15
-            && info.y != _next!.y);
-        // Temporary fix, force localInnerRadius to 5 coz otherwise arc
-        // would break under a few occasions
-        double localInnerRadius = 5;
-        if(!isRoom)
-          localInnerRadius = 4;
+        // Set innerRadius to 3 if there is no room to draw an arc (30px).
+
+        // Next element computed in forward order (top → bottom) to get the next line in [lineInfo].
+        final effectiveNext = nextLineAfter(lineInfo, info);
+        // Determine whether there is room to draw the arc.
+        final isRoom = effectiveNext != null &&
+            ((info.fullWidth - effectiveNext.fullWidth).abs() > 30
+            && info.y != effectiveNext.y);
+        // Temporary fix, force effectiveInnerRadius to 5 coz otherwise arc
+        // would break when there is not room to draw arc. Also ensures consistent
+        // inner radius for both left and right sides.
+        double effectiveInnerRadius = isRoom ? 5 : 3;
         if (!toRight) {
           final formattedHeight =
               info.fullHeight - info._innerLinePadding.bottom;
-          path.lineTo(info.fullWidth + localInnerRadius, formattedHeight);
+          path.lineTo(info.fullWidth + effectiveInnerRadius, formattedHeight);
 
           final controlPoint = Offset(info.fullWidth, formattedHeight);
           final endPoint =
-          Offset(info.fullWidth, formattedHeight - localInnerRadius);
+          Offset(info.fullWidth, formattedHeight - effectiveInnerRadius);
 
           path.quadraticBezierTo(
               controlPoint.dx, controlPoint.dy, endPoint.dx, endPoint.dy);
         } else {
           final formattedY = info.y + info._innerLinePadding.bottom;
-          path.lineTo(info.fullWidth, formattedY + localInnerRadius);
+          path.lineTo(info.fullWidth, formattedY + effectiveInnerRadius);
 
           final controlPoint = Offset(info.fullWidth, formattedY);
-          final endPoint = Offset(info.fullWidth + localInnerRadius, formattedY);
+          final endPoint = Offset(info.fullWidth + effectiveInnerRadius, formattedY);
 
           path.quadraticBezierTo(
               controlPoint.dx, controlPoint.dy, endPoint.dx, endPoint.dy);
@@ -662,6 +721,12 @@ class LineMetricsHelper {
   ///  * [isLast], which uses this property to check the amount of lines
   final int length;
 
+  /// The index of this line in the paragraph.
+  ///
+  /// This is explicitly passed during construction to avoid relying on heuristics
+  /// like y/x offsets to determine the next line.
+  final int lineIndex;
+
   /// The overriden width of the line
   ///
   /// This allows another line to affect the width of this line based on the
@@ -677,7 +742,7 @@ class LineMetricsHelper {
   double? _overridenX;
 
   /// Creates a new line metrics helper
-  LineMetricsHelper(this.metrics, this.length);
+  LineMetricsHelper(this.metrics, this.length, this.lineIndex);
 
   /// Whether this line has no content
   bool get isEmpty => rawWidth == 0.0;
@@ -716,7 +781,6 @@ class LineMetricsHelper {
   /// Dynamically calculate the inner factor based on the provided [innerRadius]
   double innerRadius(double innerRadius) {
     return (height * innerRadius) / 35;
-
   }
 
   /// The x position of the line
@@ -799,7 +863,8 @@ class LineMetricsHelper {
         other.metrics == metrics &&
         other.length == length &&
         other._overridenWidth == _overridenWidth &&
-        other._overridenX == _overridenX;
+        other._overridenX == _overridenX &&
+        other.lineIndex == lineIndex;
   }
 
   @override
@@ -807,7 +872,8 @@ class LineMetricsHelper {
     return metrics.hashCode ^
     length.hashCode ^
     _overridenWidth.hashCode ^
-    _overridenX.hashCode;
+    _overridenX.hashCode ^
+    lineIndex.hashCode;
   }
 
   @override
