@@ -37,7 +37,7 @@ class RoundedBackgroundText extends StatelessWidget {
         this.ellipsis,
         this.locale,
         this.strutStyle,
-        this.textScaleFactor = 1.0,
+        this.textScaler = TextScaler.noScaling,
         this.maxLines,
         this.textHeightBehavior,
         this.innerRadius = kDefaultInnerRadius,
@@ -56,7 +56,7 @@ class RoundedBackgroundText extends StatelessWidget {
     this.ellipsis,
     this.locale,
     this.strutStyle,
-    this.textScaleFactor = 1.0,
+    this.textScaler = TextScaler.noScaling,
     this.maxLines,
     this.textHeightBehavior,
     this.innerRadius = kDefaultInnerRadius,
@@ -81,7 +81,7 @@ class RoundedBackgroundText extends StatelessWidget {
         Color? backgroundColor,
         TextAlign textAlign = TextAlign.start,
         TextWidthBasis? textWidthBasis,
-        double textScaleFactor = 1.0,
+        TextScaler textScaler = TextScaler.noScaling,
         double innerRadius = kDefaultInnerRadius,
         double outerRadius = kDefaultOuterRadius,
         double cursorWidth = 2.0,
@@ -111,7 +111,7 @@ class RoundedBackgroundText extends StatelessWidget {
       semanticsLabel: semanticsLabel,
       textAlign: textAlign,
       textDirection: textDirection,
-      textScaleFactor: textScaleFactor,
+      textScaler: textScaler,
       textWidthBasis: textWidthBasis,
       magnifierConfiguration: magnifierConfiguration,
     );
@@ -133,7 +133,7 @@ class RoundedBackgroundText extends StatelessWidget {
         Color? backgroundColor,
         TextAlign textAlign = TextAlign.start,
         TextWidthBasis? textWidthBasis,
-        double textScaleFactor = 1.0,
+        TextScaler textScaler = TextScaler.noScaling,
         double innerRadius = kDefaultInnerRadius,
         double outerRadius = kDefaultOuterRadius,
         double cursorWidth = 2.0,
@@ -150,7 +150,7 @@ class RoundedBackgroundText extends StatelessWidget {
         text: textSpan,
         textDirection: textDirection,
         textAlign: textAlign,
-        textScaleFactor: textScaleFactor,
+        textScaler: textScaler,
         innerRadius: innerRadius,
         outerRadius: outerRadius,
         backgroundColor: backgroundColor,
@@ -159,7 +159,7 @@ class RoundedBackgroundText extends StatelessWidget {
         textSpan,
         textDirection: textDirection,
         textAlign: textAlign,
-        textScaleFactor: textScaleFactor,
+        textScaler: textScaler,
         cursorColor: cursorColor,
         cursorHeight: cursorHeight,
         cursorRadius: cursorRadius,
@@ -185,7 +185,7 @@ class RoundedBackgroundText extends StatelessWidget {
   /// The text background color.
   ///
   /// If null, a trasparent color will be used.
-  /// {@end-template}
+  /// {@endtemplate}
   final Color? backgroundColor;
 
   /// How the text should be aligned horizontally.
@@ -219,11 +219,12 @@ class RoundedBackgroundText extends StatelessWidget {
   /// {@macro flutter.painting.textPainter.strutStyle}
   final StrutStyle? strutStyle;
 
-  /// The number of font pixels for each logical pixel.
+   /// The text scaling factor to use when painting the text.
   ///
-  /// For example, if the text scale factor is 1.5, text will be 50% larger than
-  /// the specified font size.
-  final double textScaleFactor;
+  /// This controls how the text should be scaled relative to the default font size.
+  /// Defaults to [TextScaler.noScaling], which means text will use the specified
+  /// font size without scaling.
+  final TextScaler textScaler;
 
   /// {@template rounded_background_text.innerRadius}
   /// The radius of the inner corners.
@@ -232,7 +233,7 @@ class RoundedBackgroundText extends StatelessWidget {
   /// provided factor.
   ///
   /// Defaults to 8.0
-  /// {@end-template}
+  /// {@endtemplate}
   final double innerRadius;
 
   /// {@template rounded_background_text.outerRadius}
@@ -242,7 +243,7 @@ class RoundedBackgroundText extends StatelessWidget {
   /// provided factor.
   ///
   /// Defaults to 10.0
-  /// {@end-template}
+  /// {@endtemplate}
   final double outerRadius;
 
   @override
@@ -264,7 +265,7 @@ class RoundedBackgroundText extends StatelessWidget {
       maxLines: maxLines ?? defaultTextStyle.maxLines,
       textAlign: textAlign ?? defaultTextStyle.textAlign ?? TextAlign.start,
       textWidthBasis: textWidthBasis ?? defaultTextStyle.textWidthBasis,
-      textScaleFactor: textScaleFactor,
+      textScaler: textScaler,
       strutStyle: strutStyle,
       locale: locale,
       textHeightBehavior:
@@ -418,7 +419,7 @@ class RoundedBackgroundTextPainter extends CustomPainter {
       void drawInnerCorner(LineMetricsHelper info, [bool toLeft = true]) {
         // Set localInnerRadius to zero if there is no room to draw an arc (15px).
         final isRoom = ((info.x - next!.x).abs() > 15
-                          && info.y != next!.y);
+            && info.y != next!.y);
         // Temporary fix, force localInnerRadius to 5 coz otherwise arc
         // would break under a few occasions
         double localInnerRadius = 5;
@@ -534,7 +535,7 @@ class RoundedBackgroundTextPainter extends CustomPainter {
         // Set innerRadius to zero if there is no room to draw an arc (15px).
         LineMetricsHelper? _next = (info.fullWidth != next?.fullWidth) ? next : nextLine;
         final isRoom = ((info.fullWidth - _next!.fullWidth).abs() > 15
-                          && info.y != _next!.y);
+            && info.y != _next!.y);
         // Temporary fix, force localInnerRadius to 5 coz otherwise arc
         // would break under a few occasions
         double localInnerRadius = 5;

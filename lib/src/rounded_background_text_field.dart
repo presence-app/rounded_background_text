@@ -13,7 +13,7 @@ class RoundedBackgroundTextField extends StatefulWidget {
     this.backgroundColor,
     this.textAlign = TextAlign.start,
     this.textDirection,
-    this.textScaleFactor,
+    this.textScaler,
     this.textCapitalization = TextCapitalization.none,
     this.maxLines,
     this.cursorWidth = 2.0,
@@ -73,7 +73,10 @@ class RoundedBackgroundTextField extends StatefulWidget {
   final TextCapitalization textCapitalization;
 
   /// {@macro flutter.widgets.editableText.textScaleFactor}
-  final double? textScaleFactor;
+  /// The text scaling factor to use when painting the text.
+  ///
+  /// This controls how the text should be scaled relative to the default font size.
+  final TextScaler? textScaler;
 
   /// {@macro rounded_background_text.background_color}
   final Color? backgroundColor;
@@ -294,6 +297,8 @@ class _RoundedBackgroundTextFieldState
   late ScrollController scrollController =
       widget.scrollController ?? ScrollController();
 
+  TextScaler _effectiveTextScaler = TextScaler.noScaling;
+
   @override
   void initState() {
     super.initState();
@@ -301,12 +306,12 @@ class _RoundedBackgroundTextFieldState
     scrollController.addListener(_handleScrollChange);
   }
 
-  void _handleTextChange() {
-    if (mounted) setState(() {});
-  }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Update TextScaler
+    _maybeUpdateTextScaler();
 
-  void _handleScrollChange() {
-    if (mounted) setState(() {});
   }
 
   @override
@@ -319,6 +324,28 @@ class _RoundedBackgroundTextFieldState
     if (widget.controller != oldWidget.controller) {
       textController = widget.controller ?? textController;
     }
+
+    // Update TextScaler
+    _maybeUpdateTextScaler();
+
+  }
+
+  void _maybeUpdateTextScaler() {
+    final inherited = MediaQuery.textScalerOf(context);
+    final newScaler = widget.textScaler ?? inherited;
+    _effectiveTextScaler = newScaler;
+    if (_effectiveTextScaler != newScaler) {
+      _effectiveTextScaler = newScaler;
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _handleTextChange() {
+    if (mounted) setState(() {});
+  }
+
+  void _handleScrollChange() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -457,7 +484,7 @@ class _RoundedBackgroundTextFieldState
                             innerRadius: widget.innerRadius,
                             outerRadius: widget.outerRadius,
                             textDirection: widget.textDirection,
-                            textScaleFactor: widget.textScaleFactor ?? 1.0,
+                            textScaler: _effectiveTextScaler,
                           ),
                         ),
                       ),
@@ -512,7 +539,7 @@ class _RoundedBackgroundTextFieldState
                   autocorrectionTextRectColor: autocorrectionTextRectColor,
                   textCapitalization: widget.textCapitalization,
                   keyboardAppearance: widget.keyboardAppearance,
-                  textScaleFactor: widget.textScaleFactor,
+                  textScaler: _effectiveTextScaler,
                   enableInteractiveSelection: widget.enableInteractiveSelection,
                   selectionColor: selectionColor,
                   selectionControls: widget.selectionEnabled
