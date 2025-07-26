@@ -341,11 +341,11 @@ class _RoundedBackgroundTextFieldState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final TextSelectionThemeData selectionTheme =
-        TextSelectionTheme.of(context);
+    TextSelectionTheme.of(context);
     final defaultTextStyle = DefaultTextStyle.of(context);
 
     final fontSize =
-        (widget.style?.fontSize ?? defaultTextStyle.style.fontSize ?? 16);
+    (widget.style?.fontSize ?? defaultTextStyle.style.fontSize ?? 16);
 
     TextSelectionControls? textSelectionControls = widget.selectionControls;
     final bool paintCursorAboveText;
@@ -416,11 +416,9 @@ class _RoundedBackgroundTextFieldState
       leadingDistribution: TextLeadingDistribution.proportional,
     );
 
-
-
     return Center(
-      child: SingleChildScrollView (
-        child:Stack(
+      child: SingleChildScrollView(
+        child: Stack(
           alignment: () {
             switch (widget.textAlign) {
               case TextAlign.end:
@@ -438,24 +436,35 @@ class _RoundedBackgroundTextFieldState
           }(),
           children: [
             if (textController.text.isNotEmpty)
-              Center(child: IgnorePointer(
-                child: Padding(
-                  padding: padding,
-                  child: RoundedBackgroundText.rich(
-                    text: textController.buildTextSpan(
-                      context: context,
-                      withComposing: !widget.readOnly,
-                      style: style,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return Center(
+                    child: IgnorePointer(
+                      child: Padding(
+                        padding: padding,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: constraints.maxWidth,
+                          ),
+                          child: RoundedBackgroundText.rich(
+                            text: textController.buildTextSpan(
+                              context: context,
+                              withComposing: !widget.readOnly,
+                              style: style,
+                            ),
+                            textAlign: widget.textAlign,
+                            backgroundColor: widget.backgroundColor,
+                            innerRadius: widget.innerRadius,
+                            outerRadius: widget.outerRadius,
+                            textDirection: widget.textDirection,
+                            textScaleFactor: widget.textScaleFactor ?? 1.0,
+                          ),
+                        ),
+                      ),
                     ),
-                    textAlign: widget.textAlign,
-                    backgroundColor: widget.backgroundColor,
-                    innerRadius: widget.innerRadius,
-                    outerRadius: widget.outerRadius,
-                    textDirection: widget.textDirection,
-                    textScaleFactor: widget.textScaleFactor ?? 1.0,
-                  ),
-                ),
-              ),)
+                  );
+                },
+              )
             else if (widget.hint != null)
               Center(
                 child: Padding(
@@ -493,14 +502,10 @@ class _RoundedBackgroundTextFieldState
                   maxLines: widget.maxLines,
                   keyboardType: widget.keyboardType,
                   backgroundCursorColor: CupertinoColors.inactiveGray,
-                  cursorColor: widget.cursorColor ??
-                      selectionTheme.cursorColor ??
-                      widget.style?.color ??
-                       foregroundColor(widget.backgroundColor) ??
-                      Colors.black,
+                  cursorColor: cursorColor,
                   cursorWidth: widget.cursorWidth,
                   cursorHeight: widget.cursorHeight,
-                  cursorRadius: widget.cursorRadius,
+                  cursorRadius: cursorRadius,
                   paintCursorAboveText: paintCursorAboveText,
                   cursorOpacityAnimates: cursorOpacityAnimates,
                   cursorOffset: cursorOffset,
@@ -510,8 +515,9 @@ class _RoundedBackgroundTextFieldState
                   textScaleFactor: widget.textScaleFactor,
                   enableInteractiveSelection: widget.enableInteractiveSelection,
                   selectionColor: selectionColor,
-                  selectionControls:
-                  widget.selectionEnabled ? textSelectionControls : null,
+                  selectionControls: widget.selectionEnabled
+                      ? textSelectionControls
+                      : null,
                   textDirection: widget.textDirection,
                   showSelectionHandles: widget.showSelectionHandles,
                   showCursor: widget.showCursor,
@@ -542,6 +548,5 @@ class _RoundedBackgroundTextFieldState
         ),
       ),
     );
-
   }
 }

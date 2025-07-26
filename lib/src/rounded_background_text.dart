@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-
+import 'package:meta/meta.dart';
 import '../rounded_background_text.dart';
 
 const double kDefaultInnerRadius = 8.0;
@@ -312,7 +312,6 @@ class RoundedBackgroundTextPainter extends CustomPainter {
   });
 
   @visibleForTesting
-
   /// Compute the lines used by [RoundedBackgroundTextPainter].
   ///
   /// The text [painter] must have been already laid out:
