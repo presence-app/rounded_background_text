@@ -409,6 +409,10 @@ class RoundedBackgroundTextPainter extends CustomPainter {
       return;
     }
 
+    // Enforce adjacent lines with very similar widths to have identical width and alignment,
+    // preventing tiny arcs that can appear visually corrupted in edge cases.
+    lineInfo = enforceMinWidthDifference(lineInfo);
+
     // This ensures the normalization will be done for all lines in the paragraph
     // and not only for the next one
     for (final info in lineInfo) {
@@ -706,6 +710,58 @@ class RoundedBackgroundTextPainter extends CustomPainter {
     }
   }
 
+
+  /// Adjusts the widths and x positions of adjacent lines in [lineInfo]
+  /// to ensure that lines with very similar widths (less than [minDiffThreshold] apart)
+  /// are assigned the same width and aligned at the minimum x position.
+  ///
+  /// This prevents rendering artifacts such as corrupted arcs between lines
+  /// whose widths are nearly identical but slightly different.
+  ///
+  /// Returns a new list of [LineMetricsHelper] with adjusted widths and x positions.
+  List<LineMetricsHelper> enforceMinWidthDifference(
+      List<LineMetricsHelper> lineInfo, {
+        double minDiffThreshold = 15.0, // Minimum width difference in pixels between adjacent rows to allow arcs
+      }) {
+    final adjustedLineInfo = <LineMetricsHelper>[];
+
+    int i = 0;
+    while (i < lineInfo.length) {
+      final current = lineInfo[i];
+      final next = i + 1 < lineInfo.length ? lineInfo[i + 1] : null;
+
+      if (next != null) {
+        final widthDiff = (current.fullWidth - next.fullWidth).abs();
+        if (widthDiff < minDiffThreshold) {
+          final minX = current.x < next.x ? current.x : next.x;
+          final maxFullWidth = current.fullWidth > next.fullWidth
+              ? current.fullWidth
+              : next.fullWidth;
+
+          adjustedLineInfo.add(
+            LineMetricsHelper(current.metrics, current.length, current.lineIndex)
+              .._overridenWidth = maxFullWidth
+              .._overridenX = minX,
+          );
+          adjustedLineInfo.add(
+            LineMetricsHelper(next.metrics, next.length, next.lineIndex)
+              .._overridenWidth = maxFullWidth
+              .._overridenX = minX,
+          );
+
+          i += 2;
+          continue;
+        }
+      }
+
+      adjustedLineInfo.add(current);
+      i += 1;
+    }
+
+    return adjustedLineInfo;
+  }
+
+
 }
 
 /// A helper class that holds important information about a single line metrics.
@@ -882,3 +938,6 @@ class LineMetricsHelper {
     return 'LineMetricsHelper(x: $x, y: $y, w: $fullWidth, h: $fullHeight)';
   }
 }
+
+
+
