@@ -465,9 +465,7 @@ class _RoundedBackgroundTextFieldState
             if (textController.text.isNotEmpty)
               LayoutBuilder(
                 builder: (context, constraints) {
-                  return Align(
-                    alignment: Alignment.center,
-                    child: IgnorePointer(
+                  return IgnorePointer(
                       child: Padding(
                         padding: padding,
                         child: ConstrainedBox(
@@ -489,7 +487,6 @@ class _RoundedBackgroundTextFieldState
                           ),
                         ),
                       ),
-                    ),
                   );
                 },
               )
