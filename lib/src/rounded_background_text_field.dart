@@ -465,7 +465,8 @@ class _RoundedBackgroundTextFieldState
             if (textController.text.isNotEmpty)
               LayoutBuilder(
                 builder: (context, constraints) {
-                  return Center(
+                  return Align(
+                    alignment: Alignment.center,
                     child: IgnorePointer(
                       child: Padding(
                         padding: padding,
@@ -493,7 +494,8 @@ class _RoundedBackgroundTextFieldState
                 },
               )
             else if (widget.hint != null)
-              Center(
+              Align(
+                alignment: Alignment.center,
                 child: Padding(
                   padding: padding,
                   child: Text(
